@@ -4,11 +4,13 @@ import generateToken from "../utils/generateToken.js";
 
 const register = async (req, res) => {
   try {
-    const { name, fullName, email, password, role } = req.body;
+    const { name, fullName, email, password, role, photoUrl } = req.body;
     const resolvedFullName = fullName || name;
 
     if (!resolvedFullName || !email || !password) {
-      return res.status(400).json({ message: "Please provide name, email, and password" });
+      return res
+        .status(400)
+        .json({ message: "Please provide name, email, and password" });
     }
 
     // 1. check if user already exists
@@ -21,25 +23,36 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 3. create new user
+    // 3. Determine role and starting coins
+    const validRoles = ["WORKER", "BUYER", "ADMIN"];
+    const userRole =
+      role && validRoles.includes(role.toUpperCase())
+        ? role.toUpperCase()
+        : "WORKER";
+    const startingCoins = userRole === "BUYER" ? 50 : 10;
+
+    // 4. create new user
     const user = await prisma.user.create({
       data: {
         fullName: resolvedFullName,
         email,
         password: hashedPassword,
-        ...(role && { role }),
+        role: userRole,
+        coins: startingCoins,
+        photoUrl: photoUrl || null,
       },
     });
 
-    // 4. generate jwt token + set cookie
+    // 5. generate jwt token + set cookie
     const token = generateToken(user.id, res);
 
-    // 5. return response
+    // 6. return response (exclude password)
+    const { password: _, ...userWithoutPassword } = user;
     res.status(201).json({
       success: true,
       statusCode: 201,
       message: "User registered successfully",
-      user,
+      user: { ...userWithoutPassword, name: user.fullName },
       token,
     });
   } catch (error) {
@@ -52,7 +65,9 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Please provide email and password" });
+      return res
+        .status(400)
+        .json({ message: "Please provide email and password" });
     }
 
     // 1. check the user exists
@@ -70,12 +85,13 @@ const login = async (req, res) => {
     // 3. generate jwt token + set cookie
     const token = generateToken(userExist.id, res);
 
-    // 4. return response
+    // 4. return response (exclude password)
+    const { password: _, ...userWithoutPassword } = userExist;
     res.status(200).json({
       success: true,
       statusCode: 200,
       message: "User logged in successfully",
-      user: userExist,
+      user: { ...userWithoutPassword, name: userExist.fullName },
       token,
     });
   } catch (error) {

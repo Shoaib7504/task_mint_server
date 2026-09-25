@@ -4,6 +4,13 @@ dotenv.config();
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/authRoutes.js";
+import taskRouter from "./routes/taskRoutes.js";
+import submissionRouter from "./routes/submissionRoutes.js";
+import paymentRouter from "./routes/paymentRoutes.js";
+import withdrawalRouter from "./routes/withdrawalRoutes.js";
+import notificationRouter from "./routes/notificationRoutes.js";
+import userRouter from "./routes/userRoutes.js";
+import dashboardRouter from "./routes/dashboardRoutes.js";
 import { dbConnect, dbClose } from "./config/db.connect.js";
 
 const app = express();
@@ -27,6 +34,13 @@ dbConnect();
 
 // Routes
 app.use("/auth", authRouter);
+app.use("/tasks", taskRouter);
+app.use("/submissions", submissionRouter);
+app.use("/payments", paymentRouter);
+app.use("/withdrawals", withdrawalRouter);
+app.use("/notifications", notificationRouter);
+app.use("/users", userRouter);
+app.use("/dashboard", dashboardRouter);
 
 app.get("/", (req, res) => {
   res.json({

@@ -6,24 +6,157 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  WORKER
+  BUYER
+  ADMIN
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
   DELETED
 }
 
+enum TaskStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
 model User {
-  id        String     @id @default(cuid())
-  fullName  String
-  email     String     @unique
-  password  String?
-  role      String?    @default("WORKER")
-  status    UserStatus @default(ACTIVE)
+  id       String     @id @default(cuid())
+  fullName String
+  email    String     @unique
+  password String?
+  role     Role       @default(WORKER)
+  status   UserStatus @default(ACTIVE)
+  coins    Int        @default(10)
+  photoUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  tasks         Task[]         @relation("BuyerTasks")
+  submissions   Submission[]   @relation("WorkerSubmissions")
+  withdrawals   Withdrawal[]   @relation("WorkerWithdrawals")
+  payments      Payment[]      @relation("BuyerPayments")
+  notifications Notification[] @relation("UserNotifications")
+
   @@index([email])
   @@index([role])
   @@index([status])
+}
+
+model Task {
+  id              String     @id @default(cuid())
+  title           String
+  detail          String
+  taskLink        String?
+  requiredWorkers Int
+  totalWorkers    Int
+  payableAmount   Int
+  completionDate  DateTime
+  submissionInfo  String
+  imageUrl        String?
+  category        String     @default("General")
+  status          TaskStatus @default(ACTIVE)
+
+  buyerId String
+  buyer   User   @relation("BuyerTasks", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  submissions Submission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([category])
+}
+
+model Submission {
+  id                String           @id @default(cuid())
+  taskId            String
+  task              Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  workerId          String
+  worker            User             @relation("WorkerSubmissions", fields: [workerId], references: [id], onDelete: Cascade)
+  buyerId           String
+  submissionDetails String
+  payableAmount     Int
+  status            SubmissionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([workerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  transactionId String        @unique
+  buyerId       String
+  buyer         User          @relation("BuyerPayments", fields: [buyerId], references: [id], onDelete: Cascade)
+  coins         Int
+  amount        Float
+  cardLast4     String?       @default("4242")
+  status        PaymentStatus @default(COMPLETED)
+
+  createdAt DateTime @default(now())
+
+  @@index([buyerId])
+  @@index([transactionId])
+}
+
+model Withdrawal {
+  id            String           @id @default(cuid())
+  workerId      String
+  worker        User             @relation("WorkerWithdrawals", fields: [workerId], references: [id], onDelete: Cascade)
+  coins         Int
+  amount        Float
+  paymentMethod String
+  accountNumber String
+  status        WithdrawalStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+  @@index([status])
+}
+
+model Notification {
+  id     String  @id @default(cuid())
+  userId String
+  user   User    @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type   String
+  title  String
+  text   String
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
