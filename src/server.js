@@ -22,7 +22,7 @@ app.use(express.json());
 //cors use for front-end communication
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
