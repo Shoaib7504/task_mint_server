@@ -43,6 +43,12 @@ enum PaymentStatus {
   FAILED
 }
 
+enum RoleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id       String     @id @default(cuid())
   fullName String
@@ -61,6 +67,7 @@ model User {
   withdrawals   Withdrawal[]   @relation("WorkerWithdrawals")
   payments      Payment[]      @relation("BuyerPayments")
   notifications Notification[] @relation("UserNotifications")
+  roleRequests  RoleRequest[]  @relation("UserRoleRequests")
 
   @@index([email])
   @@index([role])
@@ -159,4 +166,18 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model RoleRequest {
+  id     String            @id @default(cuid())
+  userId String
+  user   User              @relation("UserRoleRequests", fields: [userId], references: [id], onDelete: Cascade)
+  status RoleRequestStatus @default(PENDING)
+  note   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

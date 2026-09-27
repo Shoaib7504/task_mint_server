@@ -1,4 +1,5 @@
 import { prisma } from "../config/db.connect.js";
+import bcrypt from "bcrypt";
 
 // GET /users/top-workers - Public top 6 workers with most coins
 export const getTopWorkers = async (req, res) => {
@@ -167,5 +168,70 @@ export const deleteUser = async (req, res) => {
   } catch (error) {
     console.error("Error deleting user:", error);
     res.status(500).json({ success: false, message: "Failed to delete user" });
+  }
+};
+
+
+// PATCH /users/profile - Authenticated user updates their own profile
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fullName, name, photoUrl, password, currentPassword } = req.body;
+
+    const dataToUpdate = {};
+    const resolvedName = fullName || name;
+    if (resolvedName && resolvedName.trim() !== "") {
+      dataToUpdate.fullName = resolvedName.trim();
+    }
+
+    if (photoUrl !== undefined) {
+      dataToUpdate.photoUrl = photoUrl ? photoUrl.trim() : null;
+    }
+
+    // Optional password update
+    if (password && password.trim() !== "") {
+      if (password.length < 6) {
+        return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+      }
+
+      const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+      if (currentUser?.password) {
+        if (!currentPassword) {
+          return res.status(400).json({ success: false, message: "Current password is required to change password" });
+        }
+        const isMatch = await bcrypt.compare(currentPassword, currentUser.password);
+        if (!isMatch) {
+          return res.status(400).json({ success: false, message: "Current password does not match" });
+        }
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      dataToUpdate.password = await bcrypt.hash(password, salt);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        status: true,
+        coins: true,
+        photoUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: { ...updatedUser, name: updatedUser.fullName },
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ success: false, message: "Failed to update profile" });
   }
 };

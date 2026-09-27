@@ -128,4 +128,65 @@ const getMe = async (req, res) => {
   }
 };
 
-export { register, login, LogOut, getMe };
+
+const googleAuth = async (req, res) => {
+  try {
+    const { email, fullName, name, photoUrl, role } = req.body;
+    const resolvedFullName = fullName || name || (email ? email.split('@')[0] : 'Google User');
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required for Google sign-in' });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const validRoles = ['WORKER', 'BUYER', 'ADMIN'];
+      const userRole = role && validRoles.includes(role.toUpperCase()) ? role.toUpperCase() : 'WORKER';
+      const startingCoins = userRole === 'BUYER' ? 50 : 10;
+
+      user = await prisma.user.create({
+        data: {
+          fullName: resolvedFullName,
+          email,
+          role: userRole,
+          coins: startingCoins,
+          photoUrl: photoUrl || null,
+          password: null,
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          type: 'success',
+          title: 'Welcome to TaskMint!',
+          text: `Welcome ${resolvedFullName}! Your account has been registered via Google with ${startingCoins} initial coins.`,
+        },
+      });
+    } else {
+      if (!user.photoUrl && photoUrl) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { photoUrl },
+        });
+      }
+    }
+
+    const token = generateToken(user.id, res);
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Google login successful',
+      user: { ...userWithoutPassword, name: user.fullName },
+      token,
+    });
+  } catch (error) {
+    console.error('Error during Google auth:', error);
+    res.status(500).json({ success: false, message: 'Internal server error during Google auth' });
+  }
+};
+
+export { register, login, LogOut, getMe, googleAuth };

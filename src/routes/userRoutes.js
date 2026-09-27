@@ -5,6 +5,7 @@ import {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  updateProfile,
 } from "../controller/userController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/authorizeRoles.js";
@@ -14,6 +15,10 @@ const router = express.Router();
 // Public routes
 router.get("/top-workers", getTopWorkers);
 router.get("/platform-stats", getPlatformStats);
+
+// Authenticated profile routes
+router.patch("/profile", authMiddleware, updateProfile);
+router.put("/profile", authMiddleware, updateProfile);
 
 // Admin-only routes
 router.get("/", authMiddleware, authorizeRoles("ADMIN"), getAllUsers);

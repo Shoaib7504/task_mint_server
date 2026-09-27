@@ -11,6 +11,7 @@ import withdrawalRouter from "./routes/withdrawalRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import dashboardRouter from "./routes/dashboardRoutes.js";
+import roleRequestRouter from "./routes/roleRequestRoutes.js";
 import { dbConnect, dbClose } from "./config/db.connect.js";
 
 const app = express();
@@ -41,6 +42,7 @@ app.use("/withdrawals", withdrawalRouter);
 app.use("/notifications", notificationRouter);
 app.use("/users", userRouter);
 app.use("/dashboard", dashboardRouter);
+app.use("/role-requests", roleRequestRouter);
 
 app.get("/", (req, res) => {
   res.json({
