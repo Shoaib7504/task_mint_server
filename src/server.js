@@ -22,7 +22,7 @@ app.use(express.json());
 //cors use for front-end communication
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   })
 );
@@ -53,33 +53,37 @@ app.get("/", (req, res) => {
   });
 });
 
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+if (!process.env.VERCEL) {
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
 
-// Graceful shutdown
-process.on("unhandledRejection", async (err) => {
-  console.log("Unhandled Rejection", err);
-  server.close(async () => {
+  // Graceful shutdown
+  process.on("unhandledRejection", async (err) => {
+    console.log("Unhandled Rejection", err);
+    server.close(async () => {
+      await dbClose();
+      process.exit(1);
+    });
+  });
+
+  process.on("uncaughtException", async (err) => {
+    console.log("Uncaught Exception", err);
     await dbClose();
     process.exit(1);
   });
-});
 
-process.on("uncaughtException", async (err) => {
-  console.log("Uncaught Exception", err);
-  await dbClose();
-  process.exit(1);
-});
+  process.on("SIGTERM", async () => {
+    console.log("SIGTERM received, shutting down gracefully");
+    await dbClose();
+    process.exit(0);
+  });
 
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  await dbClose();
-  process.exit(0);
-});
+  process.on("SIGINT", async () => {
+    console.log("SIGINT received, shutting down gracefully");
+    await dbClose();
+    process.exit(0);
+  });
+}
 
-process.on("SIGINT", async () => {
-  console.log("SIGINT received, shutting down gracefully");
-  await dbClose();
-  process.exit(0);
-});
+export default app;
